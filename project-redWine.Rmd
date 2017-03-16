@@ -106,7 +106,29 @@ qplot(data = wine, x = total.sulfur.dioxide) +
 With the log transformation the shape is much more bell like. Probably this 
 could be interesting later on.
 
-We can try to simplify the data by combining the three acid variables 
+There seem to be some outliers on the outer bounds. We can further analyse this
+by drawing the boxplot:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Hist_Box}
+grid.arrange(
+  ggplot(data = wine,
+        aes(x =  1,
+            y = total.sulfur.dioxide)) +
+  geom_boxplot(),
+  ggplot(data = wine,
+        aes(x =  1,
+            y = total.sulfur.dioxide)) +
+  geom_boxplot() +
+    scale_y_log10() +
+    ylab("log(total.sulfur.dioxide)"),
+  nrow = 1)
+```
+
+In the original data on the left we can find several outliers close to 1.5 times 
+IQR and two far away at nearly 300 mg/dm^3. On the right we see the log
+transformed scale. In this case all data points are within 1.5 times IQR.
+
+Next, we can try to simplify the data by combining the three acid variables 
 (fixed.acidity, volatile.acidity and citric.acid). While all are measured in 
 g/cm^3, we can add them together and create a new variable 'all.acids'
 
@@ -151,24 +173,8 @@ Let's also compute some statistics for quality.
 summary(wine$quality)
 ```
 
-The mean is pretty much in the center of the scale and the median is 6.
-
-To get a better picture of this stats, we draw the box plot:
-
-```{r echo=FALSE, message=FALSE, warning=FALSE, Boxplot}
-boxplot(data = wine, x = wine$quality, range = 45/25)
-        
-```
-
-The box plot shows the interquartile range (IQR) between 5 and 6 as well as the median, which is also falling right on top of the 75% quartile at 6. The whiskers mark the spots at 1.5 times IQR and reach to 4 at the lower end and 7 at the upper end. The remaining values at 3 and 8 are marked es outliers.
-
-We can also look at a violin plot, to understand the distribution even more:
-
-```{r echo=FALSE, fig.height=4, message=FALSE, warning=FALSE}
-vioplot(x = wine$quality, names = "quality")
-```
-
-As expected the major amount of data points are around the IQR. From there it declines to the outer bounds quite regularly.
+The mean is pretty much in the center of the scale at 5.636 and the median is 
+6.000.
 
 # Univariate Analysis
 
@@ -219,17 +225,25 @@ for our further explorations.
 To get an overview of the bivariate correlations we start with plotting a 
 matrix of plots and correlations:
 
-```{r echo=FALSE, fig.width=8, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+full_names <- names(wine)
+names(wine) <- c("X", "FixAc", "VolAc", "CitAc",
+                 "Sugar", "Chlor", "FrSO2", "ToSO2",
+                 "Dens", "pH", "Sluph", "Alc",
+                 "Qual", "AllAc")
 ggpairs(wine[names(wine)[2:14]], 
-        lower = list(continous = wrap('points', shape = I('.'))), 
-        upper = list(combo = wrap('box', outlier.shape = I('.'))))
+        lower = list(continous = wrap('points', shape = I('.')), corSize=10), 
+        upper = list(combo = wrap('box', outlier.shape = I('.'))), corSize=10) +
+  theme(axis.text = element_blank())
+names(wine) <- full_names
 ```
 
 The highest correlation values (>0.5) that we get are:
+
 * fixed.acidity/citric.acid
 * density/fixed.acidity
 * pH/fixed.acidity
-* ph/citric.acid
+* pH/citric.acid
 * citric.acid/volatile.acid
 * total.sulfur.dioxide/free.sulfur.dioxide
 
@@ -252,6 +266,9 @@ ggplot(data = subset(wine, wine$alcohol < quantile(wine$alcohol, .995) &
   geom_jitter(alpha = 1/2)
 ```
 
+For this plot only the values smaller than the 95% quantile of the y-axis 
+(alcohol) were used to get a better view of the main values.
+
 We can see a slight increase in alcohol levels for higher quality values. 
 However, there are less data points available for the extreme quality levels 
 (3 and 8). Thus, we have to be careful with our interpretations.
@@ -264,8 +281,27 @@ ggplot(data = wine,
   geom_boxplot()
 ```
 
-With this plot the correlations is more visible. Especially for quality values 
+With this plot the correlation is more visible. Especially for quality values 
 between 5 and 8, the median alcohol percentage is increasing.
+
+We can now also combine the two plots:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Alcohol_Jitter_Boxplot}
+ ggplot(data = wine,
+        aes(x = factor(quality), y = alcohol)) +
+  geom_jitter(alpha = .3)  +
+  geom_boxplot(alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4)
+```
+
+The combination of point and box plot show us not only the major stats - median,
+mean (red star) and the 25% / 75% quartile - it also shows us all the individual
+points and their distribution. Once again the most interesting part is the 
+upwards slope of the median and mean alcohol level.
 
 The correlation values above also state a negative value for volatile.acidity.
 We can plot it to evaluate it further:
@@ -352,13 +388,16 @@ outer bins. We will keep this in mind for our further assessment.
 
 Next, we want to look at multiple variables at a time. As we saw earlier,
 there were correlations between quality and the acid levels. Thus, we start by
-ploting volatile.acidity and citric.acid against quality:
+plotting volatile.acidity and citric.acid against quality:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, VolAcid_CitAcid}
 ggplot(data = wine) +
-  geom_jitter(aes(x = quality, y = volatile.acidity), color = 'red', alpha = 1/2) +
-  geom_jitter(aes(x = quality, y = citric.acid), color = 'orange', alpha = 1/2) +
-  ylab("volatile.acidity/citric.acid")
+  geom_jitter(aes(x = quality, y = volatile.acidity, color = 'volatile.acidity'), alpha = 1/2) +
+  geom_jitter(aes(x = quality, y = citric.acid, color = 'citric.acid'), alpha = 1/2) +
+  ylab("volatile.acidity/citric.acid") + 
+  scale_colour_manual("", 
+                      breaks = c("volatile.acidity", "citric.acid"),
+                      values = c("orange", "red"))
 ```
 
 We can see the vertical separation between the two different acids.
@@ -452,6 +491,22 @@ We can see a big cluster of bad wine between 9-10.5% alcohol and 0.2-0.8g/cm^3
 volatile.acidity (approximately). On the other hand, most of the good wine, we
 can find for alcohol levels over 10% and volatile.acidity levels smaller than
 0.6g/dm^3.
+
+Let's also verify this by calculation the main stats for both quality groups and
+the variables in interest:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Acid_Alc_Stats}
+group_by(wine, quality.grouped) %>%
+  summarize(mean_alc = mean(alcohol),
+            median_alc = median(alcohol),
+            mean_vol.ac = mean(volatile.acidity),
+            medain_vol.ac = median(volatile.acidity))
+```
+
+Both the mean and median alcohol level is higher for good wines - e.g. good wine
+has an average alcohol level of 11.52% vs. 10.25% for bad wines. The 
+volatile.acidity level on the other hand, is lower for good wines (the mean and 
+the median) - e.g. 0.4 vs. 0.54 g/dm^3.
 
 Based on what we saw, we can assume that there is some correlation between 
 quality and the three input variables alcohol, volatile.acidity and citric.acid.
@@ -573,7 +628,8 @@ qplot(data = wine,
       x = quality) +
   scale_y_continuous(breaks = seq(0,700,100)) +
   xlab("Quality") +
-  ylab("Count")
+  ylab("Count") +
+  ggtitle("Quality Histogram")
 ```
 
 ### Description One
@@ -595,8 +651,9 @@ ggplot(data = wine, aes(x = quality)) +
   scale_colour_manual("", 
                       breaks = c("volatile.acidity", "citric.acid"),
                       values = c("orange", "red")) +
-  ylab("Volatile Acidity / Citric Acid (g/dm^3)") +
-  xlab("Quality")
+  ylab("g/dm^3") +
+  xlab("Quality") +
+  ggtitle("Volatile vs. Citric Acid - Quality Impact")
 ```
 
 ### Description Two
@@ -610,21 +667,34 @@ for good wine.
 ```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
 ggplot(data = wine,
        aes(x = alcohol,
-           y = volatile.acidity)) +
-  geom_jitter(aes(color = quality.grouped)) +
+           y = volatile.acidity,
+           color = quality.grouped)) +
+  geom_jitter(alpha = .8) +
   scale_x_continuous(breaks = seq(9,14,1), limits = c(9,14)) + 
   scale_y_continuous(breaks = seq(.2,1.2,.2), limits = c(.2,1.2)) +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
   scale_color_brewer("quality", type = "qual", palette = 3) +
   xlab("Alcohol (%)") +
-  ylab("Volatile Acidity (g/dm^3)")
+  ylab("Volatile Acidity (g/dm^3)") +
+  ggtitle("Alcohol vs. Acid - Quality Impact")
 ```
 
 ### Description Three
 
 This plot shows us alcohol vs. volatile.acidity and colors good wines with dark
 blue. We can see the bad wines clustering on the left at low alcohol and higher
-acid levels. It also seems that for higher alcohol percentages, the acid level
-has a smaller impact on quality.
+acid levels.
+
+The trend lines visualize the higher acid level of bad wines. For bad wines
+the acidity is slightly decreasing with higher alcohol percentages. The trend 
+line for good wines, on the other hand, show upwards slope. We might argue that 
+with higher alcohol percentages, the acid level has a smaller impact on quality 
+for these wines.
+
+We can verify these findings with some statistics: The mean alcohol level for 
+good wine is 11.52%, while it is 10.25% for bad wines. For volatile.acidity it 
+is the other way around: the mean value of good wine is 0.4 g/dm^3 and 
+0.54 g/dm^3 for the bad ones.
 
 ------
 
@@ -657,7 +727,7 @@ example with data from various wines from different countries.
 
 # References
 
-Red Wine data set:
+Red Wine data set [Cortez et al., 2009]:
 
 > P. Cortez, A. Cerdeira, F. Almeida, T. Matos and J. Reis. 
   Modeling wine preferences by data mining from physicochemical properties.
@@ -668,8 +738,8 @@ https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt
 Detail information about the wine data set:
 https://s3.amazonaws.com/udacity-hosted-downloads/ud651/wineQualityInfo.txt
 
-Box/Violin plot: 
-http://www.statmethods.net/graphs/boxplot.html
+ggpairs text size (hint from instructor):
+http://stackoverflow.com/questions/8599685/how-to-change-correlation-text-size-in-ggpairs
 
 Matrix to data frame (as.data.frame):
 http://www.statmethods.net/management/typeconversion.html
@@ -680,6 +750,7 @@ http://stackoverflow.com/questions/29711067/r-how-to-change-name-of-factor-level
 Custom plot legend:
 http://stackoverflow.com/questions/10349206/add-legend-to-ggplot2-line-plot?noredirect=1&lq=1
 
-
+Idea and sample code of the combined box/jitter plot and regression lines for
+final plot no. 3 provided by instructor.
 
 
