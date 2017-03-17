@@ -149,7 +149,8 @@ histogram.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, Quality_Histogram}
 qplot(data = wine,
-      x = quality)
+      x = quality,
+      binwidth = 1)
 ```
 
 We can see that all wines have a quality between 3 and 8 (on a scale from 0 to 10). To verify this we can get the minimum and maximum values:
@@ -231,7 +232,7 @@ names(wine) <- c("X", "FixAc", "VolAc", "CitAc",
                  "Sugar", "Chlor", "FrSO2", "ToSO2",
                  "Dens", "pH", "Sluph", "Alc",
                  "Qual", "AllAc")
-ggpairs(wine[names(wine)[2:14]], 
+ggpairs(subset(wine, select = -c(X)), 
         lower = list(continous = wrap('points', shape = I('.')), corSize=10), 
         upper = list(combo = wrap('box', outlier.shape = I('.'))), corSize=10) +
   theme(axis.text = element_blank())
@@ -411,10 +412,11 @@ Let's plot the two acids against each other and color the points by quality:
 ggplot(data = wine,
        aes(x = citric.acid,
            y = volatile.acidity)) +
-  geom_jitter(aes(color = factor(quality)))
+  geom_jitter(aes(color = factor(quality))) +
+  scale_color_brewer(palette = "YlGnBu")
 ```
 
-There seems to be a slight tendency that good wines - 7 (purple) and 8 (pink) -
+There seems to be a slight tendency that good wines - 7 and 8 (dark blue) -
 lie in the bottom right area of the point cloud.
 
 In order to see more detail, we can exclude the outliers and only plot the 
@@ -428,11 +430,12 @@ wine90acid <- subset(wine,
 ggplot(data = wine90acid,
        aes(x = citric.acid,
            y = volatile.acidity)) +
-  geom_jitter(aes(color = factor(quality)))
+  geom_jitter(aes(color = factor(quality))) +
+  scale_color_brewer(palette = "YlGnBu")
 ```
 
 There is still no clear separation of the color/quality of the points. But we can
-see a lot of blue points in the bottom right area and also some pink ones.
+see a lot of (dark) blue points in the bottom right area.
 
 The problem is that there are far more values for bad and mediocre wines, than
 for the good ones.
@@ -625,8 +628,10 @@ containing more data, we could probably improve our model.
 ### Plot One
 ```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
 qplot(data = wine,
-      x = quality) +
+      x = quality,
+      binwidth = 1) +
   scale_y_continuous(breaks = seq(0,700,100)) +
+  scale_x_continuous(breaks = seq(3,8,1)) +
   xlab("Quality") +
   ylab("Count") +
   ggtitle("Quality Histogram")
